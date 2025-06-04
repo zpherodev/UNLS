@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Node System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(to bottom, #d0e4f5, #f0f7fa);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .app {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            max-width: 800px;
+            width: 100%;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 26px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        h2 {
+            font-size: 18px;
+            color: #34495e;
+            margin-bottom: 10px;
+        }
+        .search, .sentence, .node-stack {
+            margin-bottom: 20px;
+            animation: slideFade ease-in forwards;
+            opacity: 0;
+        }
+        .search {
+            animation-duration: 1s;
+            animation-delay: 0.2s;
+            transform: translateX(-100px);
+        }
+        .sentence {
+            animation-duration: 2s;
+            animation-delay: 0.4s;
+            transform: translateX(100px);
+        }
+        .node-stack {
+            animation-duration: 3s;
+            animation-delay: 0.6s;
+            transform: translateX(-100px);
+        }
+        @keyframes slideFade {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .search input, .sentence input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .search input:focus, .sentence input:focus {
+            border-color: #2980b9;
+            box-shadow: 0 0 5px rgba(41, 128, 185, 0.3);
+            outline: none;
+        }
+        .input-group {
+            display: flex;
+            gap: 0;
+            margin-bottom: 10px;
+        }
+        .input-group input {
+            border-radius: 4px 0 0 4px;
+        }
+        .input-group button {
+            padding: 10px 20px;
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s, transform 0.2s;
+        }
+        .input-group button:hover {
+            background: #1f618d;
+            transform: translateY(-1px);
+        }
+        .input-group button:active {
+            transform: translateY(0);
+        }
+        .results, .sentence-display, .node-stack-display {
+            border: 1px solid #ecf0f1;
+            border-radius: 4px;
+            padding: 12px;
+            min-height: 30px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            background: #fdfdfd;
+        }
+        .results {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .results div {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+        .results div:hover {
+            background: #f5f6fa;
+        }
+        .results div:last-child {
+            border-bottom: none;
+        }
+        .error {
+            color: #c0392b;
+        }
+        .empty {
+            color: #7f8c8d;
+        }
+        .missing-word {
+            color: #e67e22;
+            font-style: italic;
+        }
+        .node-stack-display > div {
+            background: #ecf0f1;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .node-stack-display .node {
+            margin: 10px 0 0 20px;
+            padding-left: 10px;
+            border-left: 2px solid #3498db;
+        }
+        .node-stack-display .node-number {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .node-stack-display .pair {
+            margin: 15px 0 0 20px;
+            padding: 10px;
+            background: #e8ecef;
+            border-radius: 4px;
+        }
+        .node-stack-display .pair-number {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        @media (max-width: 600px) {
+            .app {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 22px;
+            }
+            h2 {
+                font-size: 16px;
+            }
+            .input-group button {
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <h1>Universal Node System</h1>
+
+        <!-- Dictionary Search -->
+        <div class="search">
+            <h2>Search Node Dictionary</h2>
+            <input id="searchInput" type="text" placeholder="Search for a word..." class="w-full p-2 border rounded-md mb-2" oninput="searchDictionary()">
+            <div id="searchResults" ></div>
+        </div>
+
+        <!-- Sentence Builder -->
+        <div class="sentence">
+            <h2>Build Sentence</h2>
+            <div class="input-group">
+                <input id="wordInput" type="text" placeholder="Enter a word to add...">
+                <button onclick="addWord()">Add Word</button>
+            </div>
+            <div id="sentenceDisplay" class="sentence-display"></div>
+        </div>
+
+        <!-- Node Stack -->
+        <div class="node-stack">
+            <h2>Node Stack</h2>
+            <div class="input-group">
+                <button onclick="generateNodeStack()">Generate Node Stack</button>
+            </div>
+            <div id="nodeStackDisplay" class="node-stack-display"></div>
+        </div>
+    </div>
+
+    <script>
+        let dictionary = [];
+        let contextMatrices = {
+            Focus: [],
+            Spatial: [],
+            Action: [],
+            Identity: [],
+            Quantitative: []
+        };
+        let sentence = [];
+
+        // Load UNLS Dictionary CSV
+        Papa.parse('./UniversalNodeLinguisticsSystemDictionary.csv', {
+            download: true,
+            header: true,
+            complete: function(results) {
+                dictionary = results.data.filter(row => row['English Word'] && row['Node Collections']);
+                if (dictionary.length === 0) {
+                    alert('No valid data found in UniversalNodelinguisticsSystemDictionary.csv. Ensure it is in the same directory as index.html and has valid data.');
+                }
+            },
+            error: function(err) {
+                console.error('Error loading dictionary CSV:', err);
+                alert('Failed to load UniversalNodelinguisticsSystemDictionary.csv. Ensure it is in the same directory as index.html. Try running a local server (e.g., python -m http.server). Check Console (F12) for details.');
+            }
+        });
+
+        // Load Context Matrices
+        const matrixFiles = [
+            { name: 'Focus', file: './NLS-Focus Context Matrix.csv' },
+            { name: 'Spatial', file: './NLS-Spatial Context Matrix.csv' },
+            { name: 'Action', file: './NLS-Action Context Matrix.csv' },
+            { name: 'Identity', file: './NLS-Identity Context Matrix.csv' },
+            { name: 'Quantitative', file: './NLS-Quantitative Context Matrix.csv' }
+        ];
+
+        matrixFiles.forEach(matrix => {
+            Papa.parse(matrix.file, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    contextMatrices[matrix.name] = results.data.filter(row => row[''] && Object.keys(row).length > 1);
+                    if (contextMatrices[matrix.name].length === 0) {
+                        alert(`No valid data found in ${matrix.file}. Ensure it is in the same directory as index.html and has valid data.`);
+                    }
+                },
+                error: function(err) {
+                    console.error(`Error loading ${matrix.name} matrix CSV:`, err);
+                    alert(`Failed to load ${matrix.file}. Ensure it is in the same directory as index.html. Try running a local server (e.g., python -m http.server). Check Console (F12) for details.`);
+                }
+            });
+        });
+
+        // Search Dictionary
+        function searchDictionary() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = '';
+
+            if (dictionary.length === 0) {
+                resultsDiv.innerHTML = '<p class="text-red-500">Dictionary not loaded. Please check the CSV file.</p>';
+                return;
+            }
+
+            const filtered = dictionary.filter(item => item['English Word'] && item['English Word'].toLowerCase().includes(query));
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = '<p class="text-gray-500">No results found.</p>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'p-2 border-b';
+                div.innerHTML = `<strong>${item['English Word']}</strong> (Node Collections: ${item['Node Collections']})`;
+                resultsDiv.appendChild(div);
+            });
+        }
+
+        // Add Word to Sentence
+        function addWord() {
+            const wordInput = document.getElementById('wordInput');
+            const word = wordInput.value.trim().toLowerCase();
+            if (!word) return;
+
+            // Check if word exists in dictionary
+            const node = dictionary.find(item => item['English Word'] && item['English Word'].toLowerCase() === word);
+            if (!node) {
+                alert(`Word "${word}" not found in dictionary. Add it to UniversalNodelinguisticsSystemDictionary.csv, e.g., "${word},Focus->Identity" for a pronoun or identity node.`);
+                return;
+            }
+
+            // Split Node Collections by ||
+            const nodes = node['Node Collections'].split('||').map(n => n.trim());
+            sentence.push({ word, nodes });
+            updateSentenceDisplay();
+            wordInput.value = '';
+        }
+
+        // Update Sentence Display
+        function updateSentenceDisplay() {
+            const sentenceDiv = document.getElementById('sentenceDisplay');
+            sentenceDiv.innerHTML = sentence.length > 0 
+                ? sentence.map(s => s.word).join(' ') 
+                : '<span class="empty">No words added yet.</span>';
+        }
+
+        // Get main node from node hierarchy
+        function getMainNode(node) {
+            const mainNodes = ['Focus', 'Spatial', 'Action', 'Identity', 'Quantitative'];
+            const firstSegment = node.split('->')[0];
+            return mainNodes.includes(firstSegment) ? firstSegment : 'Focus'; // Default to Focus if unknown
+        }
+
+        // Generate Node Stack
+        function generateNodeStack() {
+            const nodeStackDiv = document.getElementById('nodeStackDisplay');
+            if (sentence.length === 0) {
+                nodeStackDiv.innerHTML = '<span class="empty">No sentence to process.</span>';
+                return;
+            }
+
+            // Check if all matrices are loaded
+            const unloadedMatrices = matrixFiles.filter(m => contextMatrices[m.name].length === 0);
+            if (unloadedMatrices.length > 0) {
+                nodeStackDiv.innerHTML = `<div class="error">Matrices not loaded: ${unloadedMatrices.map(m => m.name).join(', ')}. Ensure the CSV files are in the same directory as index.html. Try running a local server (e.g., python -m http.server). Check Console (F12) for details.</div>`;
+                return;
+            }
+
+            // Build node stack
+            const nodeStack = sentence.map(s => {
+                const nodeDetails = s.nodes.map((node, index) => ({
+                    node,
+                    index
+                }));
+                return { word: s.word, nodes: nodeDetails };
+            });
+
+            // Collect all nodes in order
+            const allNodes = [];
+            nodeStack.forEach(item => {
+                item.nodes.forEach(n => allNodes.push(n.node));
+            });
+
+            // Generate node pairs (adjacent nodes)
+            const nodePairs = [];
+            for (let i = 0; i < allNodes.length - 1; i++) {
+                nodePairs.push({ node1: allNodes[i], node2: allNodes[i + 1] });
+            }
+
+            // Get contexts for node pairs
+            const pairContexts = nodePairs.map((pair, index) => {
+                // Determine matrix based on first node's main node
+                const mainNode = getMainNode(pair.node1);
+                const matrix = contextMatrices[mainNode];
+
+                // Find row for node1
+                const row = matrix.find(r => r[''] === pair.node1);
+                if (!row) {
+                    return {
+                        pair,
+                        matrix: mainNode,
+                        context: `Row not found for node "${pair.node1}" in ${matrixFiles.find(m => m.name === mainNode).file}.`,
+                        index
+                    };
+                }
+                // Get context from column node2
+                const context = row[pair.node2] || `Column not found for node "${pair.node2}" in ${matrixFiles.find(m => m.name === mainNode).file}.`;
+                return { pair, matrix: mainNode, context, index };
+            });
+
+            // Render node stack and pairs
+            nodeStackDiv.innerHTML = `
+                <div>
+                    <strong>Node Stack:</strong><br>
+                    ${nodeStack.map(item => `
+                        <div>
+                            <strong>Word:</strong> ${item.word}<br>
+                            ${item.nodes.map(n => `
+                                <div class="node">
+                                    <span class="node-number">Node ${n.index + 1}:</span> ${n.node}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `).join('')}
+                </div>
+                ${nodePairs.length > 0 ? `
+                    <div>
+                        <strong>Node Pair Contexts:</strong><br>
+                        ${pairContexts.map(p => `
+                            <div class="pair">
+                                <span class="pair-number">Pair ${p.index + 1}:</span><br>
+                                <strong>Matrix:</strong> ${p.matrix} Context Matrix<br>
+                                <strong>Row Node:</strong> ${p.pair.node1}<br>
+                                <strong>Column Node:</strong> ${p.pair.node2}<br>
+                                <strong>Context:</strong> ${p.context}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<div>No node pairs to analyze (single node).</div>'}
+            `;
+        }
+    </script>
+</body>
+</html>
